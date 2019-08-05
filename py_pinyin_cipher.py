@@ -24,24 +24,6 @@ def stat_pos(msg, char_list):
     return (legal_pos_dict, legal_pinyin_list)
 
 
-def gen_reverse_dict(pos_dict):
-    pos_set = set()
-    for i, j in pos_dict.items():
-        for k in j:
-            pos_set.add(k)
-    pos_reverse_dict = dict(
-        zip(list(pos_set), [set() for x in range(len(pos_set))]))
-    for i in list(pos_set):
-        for j, k in pos_dict.items():
-            if i in k:
-                pos_reverse_dict[i].add(j)
-    pos_list = list(pos_set)
-    pos_list = sorted(pos_list, key=lambda tup: (tup[0],tup[1]))
-    tmp = sorted(pos_reverse_dict.items(), key=lambda tup: (tup[0],tup[1]))
-    pos_reverse_dict = dict(zip([i[0] for i in tmp],[i[1] for i in tmp]))
-    return [pos_list, pos_reverse_dict]
-
-
 def main():
     lower_case = [chr(i) for i in range(97, 123)]
     with open('data/all_legal_pinyin.txt', 'r', encoding="utf-8") as fp:
@@ -56,13 +38,10 @@ def main():
     with open("src/" + fname + ".txt", "r", encoding="utf-8") as fp:
         article = fp.read()
         total_chars = len(article.replace(" ", ""))
+        total_words = len(article.split())
 
     # 统密文中每个字母的位置
     occ_pos_dict, occ_pinyin_list = stat_pos(article, upper_case)
-
-    # 生成反向的位置表，即以位置为键
-    legal_pos_list, legal_pos_reverse_dict = gen_reverse_dict(legal_pos_dict)
-    occ_pos_list, occ_pos_reverse_dict = gen_reverse_dict(occ_pos_dict)
 
     # 由字母位置得出，是密文的最大嫌疑范围，逐步缩窄
     legal_dict = dict(zip(lower_case, [set() for i in range(26)]))
@@ -81,8 +60,8 @@ def main():
             else:
                 never_dict[k] = never_dict[k].union(i)
 
-    infodict(legal_dict, "legal_dict", 1, 13)
-    infodict(never_dict, "never_dict", 1, 13)
+    infodict(legal_dict, "legal_dict_0", 1, 13)
+    infodict(never_dict, "never_dict_0", 1, 13)
 
     has_single_pos = [i for i in legal_pos_dict.keys() if max([j[1] for j in legal_pos_dict[i]]) < 2]
     has_multi_pos = list(set(lower_case) - set(has_single_pos))
@@ -94,24 +73,15 @@ def main():
         else:
             has_multi_pos_set.add(i)
 
+    # 位置多变的符号一定不会是位置单一的字母
     for i in has_multi_pos:
         legal_dict[i] = legal_dict[i] - has_single_pos_set
+        # if total_chars > 400:
+        #     never_dict[i] = never_dict[i].union(has_single_pos_set)
     for i in has_single_pos:
         legal_dict[i] = legal_dict[i] - has_multi_pos_set
-
-    lucky_dict = dict(zip(lower_case, [set() for i in range(26)]))
-    reverse_lucky_dict = dict(zip(upper_case, [set() for i in range(26)]))
-    # 这个lucky_dict很鸡肋，基本上只有出现6字拼音的时候才能才有用
-    for i, j in legal_pos_reverse_dict.items():
-        if j:
-            if len(j) == 1 and occ_pos_reverse_dict.get(i):
-                lucky_dict[list(j)[0]] = lucky_dict[list(j)[0]].union(occ_pos_reverse_dict[i])
-    # 这个reverse_lucky_dict没啥用
-    for i, j in occ_pos_reverse_dict.items():
-        if j:
-            if len(j) == 1:
-                reverse_lucky_dict[list(j)[0]] = reverse_lucky_dict[
-                    list(j)[0]].union(legal_pos_reverse_dict[i])
+        # if total_chars > 400:
+        #     never_dict[i] = never_dict[i].union(has_multi_pos_set)
 
     infolist(legal_pinyin_list, "legal_pinyin_list", 1, 7)
     infolist(occ_pinyin_list, "occ_pinyin_list", 1, 7)
@@ -121,14 +91,7 @@ def main():
     infosimple(has_single_pos_set,"has_single_pos_set",20)
     infosimple(has_multi_pos,"has_multi_pos",20)
     infosimple(has_multi_pos_set,"has_multi_pos_set",20)
-
-    infolist(legal_pos_list, "legal_pos_list", 7)
-    infolist(occ_pos_list, "occ_pos_list", 7)
-    infodict(legal_pos_reverse_dict, "legal_pos_reverse_dict", 1, 13)
-    infodict(occ_pos_reverse_dict, "occ_pos_reverse_dict", 1)
-    # infodict(occ_pos_reverse_dict, "occ_pos_reverse_dict", 1, 13)
     infodict(legal_dict, "legal_dict", 1, 13)
     infodict(never_dict, "never_dict", 1, 13)
-    infodict(lucky_dict, "lucky_dict", 1, 13)
-    infodict(reverse_lucky_dict, "reverse_lucky_dict", 1, 13)
+
 main()
