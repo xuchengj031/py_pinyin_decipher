@@ -106,21 +106,21 @@ def info(cont, title='', cols=1, mark=[[], []]):
         a = '' if not mark[0] else '{} -> {}'.format(str(mark[0]),str(mark[1]))
         a = '' if not mark[1] else a
         cont = str(cont)
-        logger.info("-" * 64)
+        logger.info("-" * 72)
         logger.info(r">>> {} (Type:{},Len:{}) : {}".format(title,str(type(cont))[8:-2], len(str(cont)), a))
-        logger.info("-" * 64)
+        logger.info("-" * 72)
         logger.info(cont)
-        logger.info("-" * 64)
+        logger.info("-" * 72)
         logger.info("\n")
 
 
-def infolist(cont, title='', cols=4, son_cols=4):
+def infolist(cont, title='', cols=4, son_cols=4,gap=4):
     if type(cont) in [int,float,bool]:
         cont = str(cont)
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     logger.info(r">>> {} (Type:{},Len:{})".format(
         title, str(type(cont))[8:-2], len(cont)))
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     # if type(cont[0]) == list or type(cont[0]) == set:
     if type(cont[0]) == list:
         for k,v in enumerate(cont):
@@ -131,35 +131,35 @@ def infolist(cont, title='', cols=4, son_cols=4):
             if v:
                 infoset_son(v, '{}[{}]'.format(title,k), son_cols)
     else:
-        logger.info(list_columns(cont, cols))
-    logger.info("-" * 64)
+        logger.info(list_columns(cont, cols=cols,gap=gap))
+    logger.info("-" * 72)
     logger.info("\n")
 
-def infodict_son(cont, title='', cols=4):
+def infodict_son(cont, title='', cols=4,gap=4):
     logger.info(r"> {} (Type:{},Len:{})".format(title, str(type(cont))[8:-2], len(cont)))
     for i,j in cont.items():
         holder = ["{} -> {}".format(i, cont[i]) for i in cont.keys()]
-        logger.info(list_columns(holder, cols))
+        logger.info(list_columns(holder, cols=cols,gap=gap))
     logger.info("-" * 40)
 
-def infolist_son(cont, title='', cols=4):
+def infolist_son(cont, title='', cols=4,gap=4):
     logger.info(r"> {} (Type:{},Len:{})".format(title, str(type(cont))[8:-2], len(cont)))
     if type(cont) == set:
         for i in cont:
-            logger.info(list_columns(i,cols))
+            logger.info(list_columns(i,cols=cols,gap=gap))
     if type(cont) == list:
         # for k,v in enumerate(cont):
             # holder = ["[{}] {}".format(m, n) for m,n in enumerate(cont)]
             # holder = v
         logger.info(list_columns(cont, cols))
         logger.info("-" * 40)
-def infoset_son(cont, title='', cols=1, son_cols=4):
+def infoset_son(cont, title='', cols=1, son_cols=4,gap=4):
     logger.info(r"> {} (Type:{},Len:{})".format(title, str(type(cont))[8:-2], len(cont)))
     logger.info("-" * 40)
-    logger.info(list_columns(cont, cols))
+    logger.info(list_columns(cont, cols=cols,gap=gap))
     logger.info("-" * 40)
 
-def infodict(cont, title='', cols=4, son_cols=4):
+def infodict(cont, title='', cols=4, son_cols=4,gap=4):
     have_son = False
     for i,j in cont.items():
         if type(j) == dict:
@@ -173,13 +173,13 @@ def infodict(cont, title='', cols=4, son_cols=4):
             have_son = "son_set"
         else:
             have_son = False
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     logger.info(r">>> {} (Type:{},Len:{})".format(
         title, str(type(cont))[8:-2], len(cont)))
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     if not have_son:
         holder = ["{} -> {}".format(i, cont[i]) for i in cont.keys()]
-        logger.info(list_columns(holder, cols))
+        logger.info(list_columns(holder, cols=cols,gap=gap))
     elif have_son == "son_dict":
         for i,j in cont.items():
             if j:
@@ -193,11 +193,13 @@ def infodict(cont, title='', cols=4, son_cols=4):
         if max([len(j) for i,j in cont.items()])<27:
             for i,j in cont.items():
                 if j:
-                    logger.info("{}({}) -> {}".format(i,"%02d"%len(j),set(list(j)[:11])))
-                    if len(j) > 11:
-                        logger.info("         {}".format(set(list(j)[11:22])))
-                        if len(j) > 22:
-                            logger.info("         {}".format(set(list(j)[22:])))
+                    logger.info("{}({}) -> {}".format(i,"%02d"%len(j),set(list(j)[:12])))
+                    if len(j) > 12:
+                        # logger.info("         {}".format(set(list(j)[12:24])))
+                        logger.info("{}{}".format(' '*(len(str(i))+8),set(list(j)[12:24])))
+                        if len(j) > 24:
+                            # logger.info("         {}".format(set(list(j)[24:])))
+                            logger.info("{}{}".format(' '*(len(str(i))+8),set(list(j)[24:])))
                     # logger.info("{} -> {}".format(i,j))
                     # info("{} -> {}".format(i,j),'',1)
         else:
@@ -211,23 +213,23 @@ def infodict(cont, title='', cols=4, son_cols=4):
     else:
         for i,j in cont.items():
             info(j, title=title+":"+i, cols=1)
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     logger.info("\n")
 
-def infoset(cont, title='', cols=1, son_cols=4):
-    logger.info("-" * 64)
+def infoset(cont, title='', cols=1, son_cols=4,gap=4):
+    logger.info("-" * 72)
     logger.info(r">>> {} (Type:{},Len:{})".format(
         title, str(type(cont))[8:-2], len(cont)))
-    logger.info("-" * 64)
-    logger.info(list_columns(cont, cols))
-    logger.info("-" * 64)
+    logger.info("-" * 72)
+    logger.info(list_columns(cont, cols=cols,gap=gap))
+    logger.info("-" * 72)
     logger.info("\n")
 
 def infosimple(cont,title='',cols=1):
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     logger.info(r">>> {} (Type:{},Len:{})".format(
         title, str(type(cont))[8:-2], len(cont)))
-    logger.info("-" * 64)
+    logger.info("-" * 72)
     cont = cont if type(cont) == str else ', '.join(cont)
     logger.info(cont)
-    logger.info("-" * 64)
+    logger.info("-" * 72)
