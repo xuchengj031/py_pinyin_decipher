@@ -1,13 +1,8 @@
 *.pyc
 *.bak
-*.txt
-*.csv
 /*.svg
 /*.png
 __pycache__/**
 /attempt/**
 /log
-/src
 /dst
-/.idea/**
-*.bak

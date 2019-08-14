@@ -1,9 +1,16 @@
 ## 功能
 
-计算汉语拼音文本中各字母前后相邻字母的出现频率，并可视化。
+使用字母位置分析、字母频率分析、暴力破解等多种方式破译明文为汉语拼音的单表替换密码。
 
-详见[python统计前后拼音字母](http://www.xuchengjing.cn/python统计前后拼音字母/)
+详见[[python非暴力破译古典密码]](http://www.xuchengjing.cn/python非暴力破译古典密码/)
 
 ## 效果
 
-![](README/heat_map_next_prob.svg)
+#### 字母频率分析结果
+
+![]('http://www.xuchengjing.cn/python非暴力破译古典密码/images/test_suixiang_phrase.png')
+
+#### 暴力破解结果
+
+![]('http://www.xuchengjing.cn/python非暴力破译古典密码/images/best.png')
+

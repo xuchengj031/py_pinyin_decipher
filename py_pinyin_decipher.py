@@ -31,6 +31,8 @@ def stat_pos(msg, char_list):
     return (legal_pos_dict, legal_pinyin_list)
 
 flat = lambda lst: sum(map(flat, lst), []) if isinstance(lst, list) else [lst]
+
+
 def verifier(c_char, p_char, msg):
     '''检验提交的替换是否有效
     '''
@@ -147,10 +149,14 @@ def updater(msg, dic):
             break
 
     progress = update_couples(progress)
+    if len(remain_alpha) == 0:
+        with open("dst/" + fname + '_cracked.txt', 'w', encoding="utf-8") as fp:
+            fp.write(progress)
+        info("crack complished! plain text is saved.")
     return progress
 
 
-def letter_pos_analyse(fname):
+def letter_pos_analyse(msg):
 
     with open('data/all_legal_pinyin.txt', 'r', encoding="utf-8") as fp:
         all_legal_pinyin = fp.read()
@@ -160,7 +166,7 @@ def letter_pos_analyse(fname):
     legal_pos_dict, legal_pinyin_list = stat_pos(all_legal_pinyin, lower_case)
     # 统密文中每个字母的位置
     occ_pos_dict, occ_pinyin_list = stat_pos(
-        article, upper_case[:total_symbos])
+        msg, upper_case[:total_symbos])
 
     # 如果密文中符号的位置的集合，正好是某字母正确位置的子集，那它可能是这个字母；
     # 反之如果不在该字母位置集合的范围内，它就绝对不会是这个字母
@@ -252,7 +258,7 @@ def letter_pos_analyse(fname):
     infodict(lucky_dict, "lucky_dict", 1, 14)
     infodict(reverse_lucky_dict, "reverse_lucky_dict", 1, 14)
 
-    progress = updater(article, lucky_dict)
+    progress = updater(msg, lucky_dict)
     progress = updater(progress, legal_dict)
 
     infodict(legal_dict, "legal_dict:letter_pos_analyse", 1, 14)
@@ -295,7 +301,6 @@ def letter_freq_analyse(msg):
     infolist(occ_rank, "occ_rank: amount({})".format(amount), 5)
 
     occ_alphabet = [i for i, j in occ_rank]
-    occ_alpha = [i for i, j in occ_rank]
     occ_freq = [round(j / amount * 100, 4) for i, j in occ_rank]
     occ_freq_dict = dict(zip(occ_alphabet, occ_freq))
 
@@ -305,9 +310,7 @@ def letter_freq_analyse(msg):
     failed = 0
     vibration = 0
 
-    def check_freq(cur_symbol, letter, vibration=0):
-        if vibration == 0:
-            vibration = 1
+    def check_freq(cur_symbol, letter, vibration):
         return abs(float(exp_freq_dict[letter]) - occ_freq_dict[cur_symbol]) < vibration
 
     def prober(letter, msg, vibration, failed):
@@ -366,21 +369,28 @@ def letter_freq_analyse(msg):
                 if idx < len(occ_alphabet):
                     cur_symbol = occ_alphabet[idx]
                     tmp_msg = msg.replace(cur_symbol, letter)
-                    if verifier(cur_symbol, letter, tmp_msg) & check_freq(cur_symbol, letter, vibration / adapter):
+                    if (verifier(cur_symbol, letter, tmp_msg) &
+                        check_freq(cur_symbol, letter, vibration / adapter)):
                         suspects.append(cur_symbol)
                         info("suspects append '{}' for '{}'".format(
                             cur_symbol, letter))
-            if len(set(suspects)) == 1:
-                suspects_dict[letter] = set(suspects[0])
-                failed = 0
-            elif len(set(suspects)) == 0:
-                failed = 1
-
-            else:
+            # if len(set(suspects)) == 1:
+            #     suspects_dict[letter] = set(suspects[0])
+            #     failed = 0
+            # elif len(set(suspects)) == 0:
+            #     failed = 1
+            # else:
+            #     failed = 0
+            #     for i in suspects:
+            #         suspects_dict[letter].add(i)
+            # info("curr letter '{}' updated: vibration={},failed={}".format(letter,str(vibration),str(failed)))
+            if len(set(suspects)):
                 failed = 0
                 for i in suspects:
                     suspects_dict[letter].add(i)
-            # info("curr letter '{}' updated: vibration={},failed={}".format(letter,str(vibration),str(failed)))
+            elif len(set(suspects)) == 0:
+                failed = 1
+
         return (failed, vibration)
 
     def guess_by_freq(letters, msg, vibration):
@@ -399,22 +409,23 @@ def letter_freq_analyse(msg):
 
     # guess_by_freq("ivaeounhg", msg, vibration)
     guess_by_freq(remain_alpha, msg_without_space, vibration)
+    '''因为检验过是否legal_dict后才加入suspects_dict，这段没有必要，重复了
     for i in lower_case:
         if type(suspects_dict[i]) == set:
             suspects_dict[i] = suspects_dict[i].intersection(legal_dict[i])
     infodict(suspects_dict, "suspects_dict:letter_freq_analyse:begining", 1, 14)
 
-    for i in remain_alpha:
-        if not suspects_dict[i].issubset(legal_dict[i]):
-            info("warning:sth rong!", "warning:letter_freq_analyse {}".format(i), 1)
+    # for i in remain_alpha:
+    #     if not suspects_dict[i].issubset(legal_dict[i]):
+    #         info("warning:sth rong!", "warning:letter_freq_analyse {}".format(i), 1)'''
 
-    infodict(legal_dict, "legal_dict:b4_letter_freq_analyse", 1, 14)
-    infodict(suspects_dict, "suspects_dict:b4_letter_freq_analyse", 1, 14)
+    # infodict(legal_dict, "legal_dict:b4_letter_freq_analyse", 1, 14)
+    # infodict(suspects_dict, "suspects_dict:b4_letter_freq_analyse", 1, 14)
     progress = msg
     progress = updater(progress, {k: suspects_dict[
                        k] for k in suspects_dict.keys() if k in list("aoeiuv")})
-    infodict({k: suspects_dict[k] for k in suspects_dict.keys(
-    ) if k in list("aoeiuv")}, "legal_dict:vowel", 1, 14)
+    # infodict({k: suspects_dict[k] for k in suspects_dict.keys(
+    # ) if k in list("aoeiuv")}, "legal_dict:vowel", 1, 14)
     progress = updater(progress, legal_dict)
     # progress = updater(progress, suspects_dict)
     infodict(legal_dict, "legal_dict:letter_freq_analyse", 1, 14)
@@ -452,7 +463,7 @@ def spell_analyse(msg):
         zip(pinyin_finals, [set() for i in range(len(pinyin_finals))]))
     never_dict1 = dict(zip(lower_case, [set() for i in range(26)]))
     never_dict2 = dict(zip(lower_case, [set() for i in range(26)]))
-    flat = lambda lst: sum(map(flat, lst), []) if isinstance(lst, list) else [lst]
+    # flat = lambda lst: sum(map(flat, lst), []) if isinstance(lst, list) else [lst]
     for letter in initial_list:
         if letter in remain_alpha:
             for word in flat(legal_pinyin_list[2:]):
@@ -658,6 +669,7 @@ def spell_analyse(msg):
     infodict(suspects_dict, "suspects_dict:b4_spell_analyse", 1, 14)
     progress = msg
     progress = updater(progress, legal_dict)
+    # progress = updater(progress, suspects_dict)
 
     infodict(legal_dict, "legal_dict:spell_analyse", 1, 14)
     infodict(suspects_dict, "suspects_dict:spell_analyse", 1, 14)
@@ -670,27 +682,30 @@ def spell_analyse(msg):
 
     return progress
 
+
 def gen_most_used_phrases(max_len=8):
     with open("data/most_used_chinese_word_op.txt", "r", encoding="utf-8") as fp:
         most_used_chinese_word = fp.read().split("\n")
     # 高频词汇的列表，按长度分
-    most_used_phrases = [[] for i in range(max_len+1)]
-    for x in range(2,max_len+1):
+    most_used_phrases = [[] for i in range(max_len + 1)]
+    for x in range(2, max_len + 1):
         for i in most_used_chinese_word:
-            if i.count(" ") == x-1:
+            if i.count(" ") == x - 1:
                 most_used_phrases[x].append(i)
     return most_used_phrases
 
-def gen_phrase_list(num,msg):
+
+def gen_phrase_list(num, msg):
     list_whole = msg.split()
-    phrase_list = [[] for i in range(num+1)]
+    phrase_list = [[] for i in range(num + 1)]
     for i in range(num):
-        for x in range(2,i+1):
+        for x in range(2, i + 1):
             for j in range(len(list_whole) - i):
                 phrase_list[i].append(" ".join(list_whole[j:j + i]))
     return phrase_list
 
-def find_match_phrase(num,lst):
+
+def find_match_phrase(num, lst):
     most_used_phrases = gen_most_used_phrases(num)
     match_phrase_list = []
     for i in range(num):
@@ -702,54 +717,29 @@ def find_match_phrase(num,lst):
                 if not is_all_lower:
                     tmp = re.sub(r'[A-Z]', '[a-z]', j)
                     pat = re.compile('^' + tmp + '$')
-                    # info("{}:{}".format(j,pat),"find_match_phrase")
+                    info("{}:{}".format(j,pat),"find_match_phrase")
                 else:
-                    pat = j
-                for j in most_used_phrases[i]:
-                    g = re.match(pat, j)
+                    pat = re.compile('^' + j + '$')
+                for k in most_used_phrases[i]:
+                    g = re.match(pat, k)
                     if g:
-                        match_phrase_list.append((j,g.group()))
+                        match_phrase_list.append((j, g.group()))
     return match_phrase_list
 
-def matcher(msg,max_len=8):
+
+def matcher(msg, max_len=8):
     '''
     max_len: int,设定最多统计到几个字的词
     '''
     most_used_phrases = gen_most_used_phrases(max_len)
     list_whole = msg.split()
-    # occ_word_list = [[] for i in range(max_len+1)]
-
-    infolist(most_used_phrases,"most_used_phrases:matcher",3)
-
-    # match_phrase_list = []
-
-    # def gen_list(num):
-    #     for x in range(2,num+1):
-    #         for i in range(len(list_whole) - num):
-    #             occ_word_list[num].append(" ".join(list_whole[i:i + num]))
-
-    # def find_match_word(num):
-    #     for i in occ_word_list[num]:
-    #         if i:
-    #             is_all_lower = True
-    #             for char in i.replace(" ", ""):
-    #                 is_all_lower &= char.islower()
-    #             if not is_all_lower:
-    #                 tmp = re.sub(r'[A-Z]', '[a-z]', i)
-    #                 pat = re.compile('^' + tmp + '$')
-    #                 # info("{}:{}".format(i,pat),"find_match_word")
-    #             else:
-    #                 pat = i
-    #             for j in most_used_phrases[num]:
-    #                 g = re.match(pat, j)
-    #                 if g:
-    #                     match_phrase_list.append((i,g.group()))
+    infolist(most_used_phrases, "most_used_phrases:matcher", 3)
 
     def find_same_cap(msg, char):
         counter = pos = 0
         index_pos = []
         while(True):
-            pos = msg.find(char , pos)
+            pos = msg.find(char, pos)
             if pos > -1:
                 index_pos.append(pos)
                 counter = counter + 1
@@ -759,7 +749,7 @@ def matcher(msg,max_len=8):
         return (counter, index_pos)
 
     def clean_match_phrase_list(match_phrase_list):
-        info(len(match_phrase_list),"before")
+        info(len(match_phrase_list), "before")
         removed_from_match_because_cap = set()
         removed_from_match_because_cap1 = set()
         removed_from_match_because_cap2 = set()
@@ -820,22 +810,20 @@ def matcher(msg,max_len=8):
         # infolist(match_phrase_list,"match_phrase_list:after",1)
         return match_phrase_list
 
-    # for i in range(max_len):
-    #     gen_list(i)
+    occ_phrase_list = gen_phrase_list(max_len, msg)
+    match_phrase_list = find_match_phrase(max_len, occ_phrase_list)
 
-    occ_word_list = gen_phrase_list(max_len,msg)
-    match_phrase_list = find_match_phrase(max_len,occ_word_list)
-    # for i in range(2,max_len):
-    #     find_match_word(i)
-
-    infolist(occ_word_list,"occ_word_list:matcher",3)
-    info(len(match_phrase_list),"match_phrase_list: before".format(),1)
+    infolist(occ_phrase_list, "occ_phrase_list:matcher", 3)
+    infolist(match_phrase_list, "match_phrase_list:matcher", 2)
+    info(len(match_phrase_list), "match_phrase_list: before".format(), 1)
 
     match_phrase_list = clean_match_phrase_list(match_phrase_list)
 
-    infoset(set(match_phrase_list),"match_phrase_list: after clean_match_phrase_list".format(),1)
+    infoset(set(match_phrase_list),
+            "match_phrase_list: after clean_match_phrase_list".format(), 2)
 
     return match_phrase_list
+
 
 def estimate_initial(match_phrase_list):
     max_len = min([match_phrase_list.count(i) for i in match_phrase_list])
@@ -843,270 +831,233 @@ def estimate_initial(match_phrase_list):
         times = [k[1] for k in match_phrase_list].count(i[1]) / max_len
         word_count = len(i[0].split(" "))
         char_count = len(i[0].replace(" ", ""))
-        cap_char_count = len(set(re.findall('[A-Z]',i[0])))
-        t1= list(set(match_phrase_list))
-        t2= [k[0] for k in list(set(match_phrase_list))]
+        cap_char_count = len(set(re.findall('[A-Z]', i[0])))
+        t1 = list(set(match_phrase_list))
+        t2 = [k[0] for k in list(set(match_phrase_list))]
         ambiguity = t1.count(i) / t2.count(i[0])
         perc_by_word = cap_char_count / word_count
         perc_by_char = cap_char_count / char_count
-        weight_word_count = round(2**(word_count-4)+0.5, 2)
-        weight_char_count = round(2**(char_count/3)+0.5, 2)
-        weight_times = round(2**((times-2)*0.6), 2)
-        certainty = ((1- perc_by_char)*12 + (1 - perc_by_word)*2+ (word_count-1)*6)*times*(ambiguity+0.5)
-        info("char:{}\nword:{}\ntime:{}\nambi:{}\t{}/{}\nscore:{}".format((1- perc_by_char),(1 - perc_by_word),times,ambiguity,t1.count(i),t2.count(i[0]),certainty),"{}".format(i))
+        weight_word_count = round(2**(word_count - 4) + 0.5, 2)
+        weight_char_count = round(2**(char_count / 3) + 0.5, 2)
+        weight_times = round(2**((times - 2) * 0.6), 2)
+        certainty = ((1 - perc_by_char) * 12 + (1 - perc_by_word)
+                     * 2 + (word_count - 1) * 6) * times * (ambiguity + 0.5)
+        info("char:{}\nword:{}\ntime:{}\nambi:{}\t{}/{}\nscore:{}".format((1 - perc_by_char),
+                                                                          (1 - perc_by_word), times, ambiguity, t1.count(i), t2.count(i[0]), certainty), "{}".format(i))
         if (cap_char_count / word_count) < 1:
             for j in i[0].split(" "):
-                if certainty >= 50 and ambiguity >0.3:
+                if certainty >= 50 and ambiguity > 0.3:
                     for k in j:
                         if k.isupper():
                             idx = i[0].find(k)
                             # info("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(i,k,idx,i[0][idx],i[1][idx],certainty,(times / max_len),char_count,str((1 - cap_char_count / char_count)*1.5),((word_count - cap_char_count) / cap_char_count)),"presumably_matched",1)
                             if i[0][idx].strip():
                                 if type(presumably_dict[i[1][idx].strip()]) == set:
-                                    presumably_dict[i[1][idx].strip()].add(i[0][idx].strip())
-                elif certainty >= 25 and times >= 2 and ambiguity >0.3:
+                                    presumably_dict[i[1][idx].strip()].add(
+                                        i[0][idx].strip())
+                elif certainty >= 25 and times >= 2 and ambiguity > 0.3:
                     for k in j:
                         if k.isupper():
                             idx = i[0].find(k)
                             # info("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(i,k,idx,i[0][idx],i[1][idx],certainty,(times / max_len),char_count,str((1 - cap_char_count / char_count)*1.5),((word_count - cap_char_count) / cap_char_count)),"probably_matched",1)
                             if i[0][idx].strip():
                                 if type(probably_dict[i[1][idx].strip()]) == set:
-                                    probably_dict[i[1][idx].strip()].add(i[0][idx].strip())
-                elif certainty > 10 and word_count >2 and ambiguity >0.3:
+                                    probably_dict[i[1][idx].strip()].add(
+                                        i[0][idx].strip())
+                elif certainty > 10 and word_count > 2 and ambiguity > 0.3:
                     for k in j:
                         if k.isupper():
                             idx = i[0].find(k)
                             # info("{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}\t{}".format(i,k,idx,i[0][idx],i[1][idx],certainty,(times / max_len),char_count,str((1 - cap_char_count / char_count)*1.5),((word_count - cap_char_count) / cap_char_count)),"possibly_matched",1)
                             if i[0][idx].strip():
                                 if type(possibly_dict[i[1][idx].strip()]) == set:
-                                    possibly_dict[i[1][idx].strip()].add(i[0][idx].strip())
+                                    possibly_dict[i[1][idx].strip()].add(
+                                        i[0][idx].strip())
 
-def phrase_freq_analyse(msg,max_len=8):
+
+def phrase_freq_analyse(msg, max_len=8):
     '''
     '''
-    match_phrase_list=matcher(msg,max_len)
+    match_phrase_list = matcher(msg, max_len)
     # infolist(match_phrase_list,"match_phrase_list:phrase_freq_analyse")
     estimate_initial(match_phrase_list)
     for i in remain_alpha:
-        guess_dict[i]=presumably_dict[i].intersection(legal_dict[i]).intersection(suspects_dict[i])
-    progress=msg
-    progress = updater(progress,guess_dict)
-    progress = updater(progress,legal_dict)
+        guess_dict[i] = presumably_dict[i].intersection(
+            legal_dict[i]).intersection(suspects_dict[i])
+    progress = msg
+    progress = updater(progress, guess_dict)
+    progress = updater(progress, legal_dict)
+    # progress = updater(progress, suspects_dict)
     return progress
 
-def exhaust(lst,msg):
+
+def enumerator(lst, msg):
     lst = list(set(lst).intersection(set(remain_alpha)))
-    infolist(lst,"actualy letter to exhaust",13)
+    infolist(lst, "actualy letter to enumerator", 13)
     list_to_prod = []
     cartesian_prod = []
-    tmp_unsolved_symbol=list(set(flat([list(suspects_dict[k]) for k in lst])))
-    suspects_reverse_dict = dict(zip(tmp_unsolved_symbol, [[] for i in range(len(tmp_unsolved_symbol))]))
+    tmp_unsolved_symbol = list(
+        set(flat([list(suspects_dict[k]) for k in lst])))
+    suspects_reverse_dict = dict(
+        zip(tmp_unsolved_symbol, [[] for i in range(len(tmp_unsolved_symbol))]))
     for i in tmp_unsolved_symbol:
         for j in lst:
             if i in suspects_dict[j]:
                 suspects_reverse_dict[i].append(j)
     for i in tmp_unsolved_symbol:
         list_to_prod.append(list(suspects_reverse_dict[i]))
-    infolist(list_to_prod,"list_to_prod",2)
-    infodict(suspects_reverse_dict,"suspects_reverse_dict",2)
+    infolist(list_to_prod, "list_to_prod", 1, 13)
+    infodict(suspects_reverse_dict, "suspects_reverse_dict", 1, 13)
     for i in itertools.product(*list_to_prod):
         cartesian_prod.append(i)
-    cartesian_prod = list(filter(lambda x: len(set(x))== len(x), cartesian_prod))
-    infolist(cartesian_prod,"cartesian_prod",1)
+    cartesian_prod = list(
+        filter(lambda x: len(set(x)) == len(x), cartesian_prod))
+    infolist(cartesian_prod, "cartesian_prod", 1)
 
-    tmp_couple_lst=[]
+    tmp_couple_lst = []
     for i in range(len(cartesian_prod)):
-        tmp_couples=[]
+        tmp_couples = []
         for j in range(len(tmp_unsolved_symbol)):
-            tmp_couples.append((tmp_unsolved_symbol[j],cartesian_prod[i][j]))
+            tmp_couples.append((tmp_unsolved_symbol[j], cartesian_prod[i][j]))
         tmp_couples.sort()
         # infoset(tmp_couples,"tmp_couples",5)
         tmp_couple_lst.append(tmp_couples)
-    infolist(tmp_couple_lst,"tmp_couple_lst",2)
+    infolist(tmp_couple_lst, "tmp_couple_lst", 2)
+
+    case = 1
+    for i, j in suspects_reverse_dict.items():
+        case *= len(j)
+    nonredundant_case = 1
+    for i in list(set([len(j) for j in suspects_dict.values()])):
+        nonredundant_case *= i
+    info("{}:{}".format(case, nonredundant_case), "nonredundant_case")
+    if case > 20000 or nonredundant_case > 120:
+        return
 
     tmp_progress_dict = {}
     for i in tmp_couple_lst:
-        tmp_progress_dict.update(dict(zip([tuple(i) for i in tmp_couple_lst],['' for i in range(len(tmp_couple_lst))])))
-    for i,j in tmp_progress_dict.items():
-        info(j,"{}".format(i))
+        tmp_progress_dict.update(dict(zip([tuple(i) for i in tmp_couple_lst], [
+                                 '' for i in range(len(tmp_couple_lst))])))
+    for i, j in tmp_progress_dict.items():
+        info(j, "{}".format(i))
     for i in tmp_couple_lst:
         tmp_progress = msg
         title = []
         for k in i:
-            tmp_progress=tmp_progress.replace(k[0],k[1])
-            title.append((k[0],k[1]))
+            tmp_progress = tmp_progress.replace(k[0], k[1])
+            title.append((k[0], k[1]))
         title.sort()
         tmp_progress_dict[tuple(title)] = tmp_progress
 
-    # for i,j in tmp_progress_dict.items():
-    #     info(j,"{}".format(i))
-    infodict(tmp_progress_dict, 'tmp_progress_dict',1)
+    infodict(tmp_progress_dict, 'tmp_progress_dict', 1)
     return tmp_progress_dict
 
 
-    '''
-    # list_prod_length = 1
-    # list_to_prod = set()
-    # cartesian_prod = []
-    # tmp_progress_dict = {}
-    # new_list = []
-    # for i in lst:
-    #     list_prod_length *= len(suspects_dict[i])
-    # # info("There's {} possibilities\n{}".format(list_prod_length, 'IT IS OK' if not list_prod_length>10000 else 'TO MARCH! I DONT WANT TO TRY!'),"list_prod_length")
-    # # if list_prod_length > 10000:
-    # #     return
-    # # else:
-    # for i in lst:
-    #     if i not in solved_alpha:
-    #         new_list.append(i)
-    #         list_to_prod.add(list(suspects_dict[i]))
-    #         # info("[{}] add to cartesian_prod".format(','.join(list(suspects_dict[i]))),"add cartesian_prod")
-
-    # infolist(list_to_prod,"list_to_prod",1)
-    # for i in itertools.product(*list_to_prod):
-    #     cartesian_prod.append(i)
-    # cartesian_prod = list(filter(lambda x:x[0] != x[1], cartesian_prod))
-    # cartesian_prod_list = [dict(zip(new_list,i)) for i in cartesian_prod]
-
-    # infolist(cartesian_prod,"cartesian_prod",1)
-    # infolist(cartesian_prod_list,"cartesian_prod_list",1)
-    '''
-
-    # for i in cartesian_prod_list:
-    #     tmp_progress_dict.update(dict(zip([tuple(zip(tuple(i),tuple(i.values())))],['' for i in range(len(cartesian_prod_list))])))
-
-    # for i,j in enumerate(cartesian_prod_list):
-    #     tmp_progress = msg
-    #     title = []
-    #     for k,l in j.items():
-    #         tmp_progress=tmp_progress.replace(l,k)
-    #         title.append((k,l))
-    #     # info(tmp_progress,"tmp_progress >> {}: {}".format(str(i),j))
-    #     tmp_progress_dict[tuple(title)] = tmp_progress
-
-    # infodict(tmp_progress_dict, 'tmp_progress_dict',1)
-    # return tmp_progress_dict
-
-def assess_it(msg,max_len):
+def assessor(title, msg, max_len):
     most_used_phrases = gen_most_used_phrases(max_len)
 
-    # def gen_list(num):
-    #     for x in range(2,num+1):
-    #         for i in range(len(list_whole) - num):
-    #             occ_word_list[num].append(" ".join(list_whole[i:i + num]))
-    # # tmp_list = gen_word_list(msg)
-    # # match_phrase_list = []
-    # def find_match_word(num):
-    #     for i in tmp_list[num - 2]:
-    #         if i:
-    #             is_all_lower = True
-    #             for char in i.replace(" ", ""):
-    #                 is_all_lower &= char.islower()
-    #             if not is_all_lower:
-    #                 tmp = re.sub(r'[A-Z]', '[a-z]', i)
-    #                 pat = re.compile('^' + tmp + '$')
-    #             else:
-    #                 pat = i
-    #             for j in most_used_phrases[num - 2]:
-    #                 g = re.search(i, j)
-    #                 if g:
-    #                     match_phrase_list.append((i, g.group()))
-
-    # list_whole = msg.split(" ")
-
-    # tmp_list = [[] for i in range(max_len)]
-
-    # for k in range(max_len):
-    #     gen_list(k)
-
-    # match_phrase_list = []
-    # for k in range(max_len):
-    #     find_match_word(k)
-
-    tmp_list = gen_phrase_list(max_len,msg)
-    match_phrase_list = find_match_phrase(max_len,tmp_list)
+    tmp_list = gen_phrase_list(max_len, msg)
+    match_phrase_list = find_match_phrase(max_len, tmp_list)
 
     total_matched_times = int(len(match_phrase_list) / max_len)
-    matched_phrases = len(set(match_phrase_list))
-    match_word_dict = dict(zip(list(set(match_phrase_list)), [0 for k in range(len(set(match_phrase_list)))]))
+    matched_phrases_count = len(set(match_phrase_list))
+    match_phrase_dict = dict(zip(list(set(match_phrase_list)), [
+                             0 for k in range(len(set(match_phrase_list)))]))
     for k in match_phrase_list:
-        match_word_dict[k] = int(match_phrase_list.count(k) / max_len)
+        match_phrase_dict[k] = int(match_phrase_list.count(k))
 
-    # infolist(set(match_phrase_list),"match_phrase_list: {} [{}/{} matched]".format(i,len(set(match_phrase_list)),len(match_phrase_list)),1)
-    infodict(match_word_dict,"match_word_dict: [{}/{} matched]".format(matched_phrases,total_matched_times),1)
+    infoset(set(match_phrase_list), "match_phrase_list(assessor): [{}/{} matched]\n{}\n".format(
+        len(set(match_phrase_list)), len(match_phrase_list), title), 2)
+    infodict(match_phrase_dict, "match_phrase_dict: [{}/{} matched]\n{}\n".format(
+        matched_phrases_count, total_matched_times, title), 2)
 
-    matched_more_than_one_time = dict(zip([k for k in match_word_dict.keys() if match_word_dict[k] > 1],
-        [l for l in match_word_dict.values() if l > 1]))
-
-    # infodict(matched_more_than_one_time,"matched_more_than_one_time: {} [{}/{} matched]".format(i,matched_phrases,total_matched_times),1)
-
-    the_items = [k[1] for k in match_word_dict.keys()]
-    lengths = [len(k[0].split(" ")) for k in match_word_dict.keys()]
-    times = [match_word_dict[k] for k in match_word_dict.keys()]
+    the_items = [k[1] for k in match_phrase_dict.keys()]
+    lengths = [len(k[0].split(" ")) for k in match_phrase_dict.keys()]
+    times = [match_phrase_dict[k] for k in match_phrase_dict.keys()]
     max_length = max(lengths)
-    max_times= max(times)
-    max_length_item = sorted(match_word_dict.items(),key = lambda x:len(x[0]),reverse=True)[0]
-    max_times_item = sorted(match_word_dict.items(),key = lambda x:x[1],reverse=True)[0]
-    weight_length = [round(2**(k-4)+0.5, 2) for k in range(1, max_len+1)]
-    weight_times = [round(2**((k-2)*0.6), 2) for k in range(1, max_len+1)]
-    score_list = [round(k**weight_length[k]+l*weight_times[l], 2) for k,l in zip(lengths, times)]
-    score = sum(score_list)
+    max_times = max(times)
+    max_length_item = sorted(match_phrase_dict.items(),
+                             key=lambda x: len(x[0]), reverse=True)[0]
+    max_times_item = sorted(match_phrase_dict.items(),
+                            key=lambda x: x[1], reverse=True)[0]
+    weight_length = [round(2**(k - 4) + 0.5, 2) for k in range(1, max_len + 1)]
+    weight_times = [round(2**((k - 2) * 0.6), 2)
+                    for k in range(1, max_len + 1)]
+    score_list = [k**weight_length[k] + l * weight_times[l]
+                  for k, l in zip(lengths, times)]
+    score = round(sum(score_list), 2)
 
-    case_score_dict = dict(zip(the_items,score_list))
+    case_score_dict = dict(zip(the_items, score_list))
 
-    info("{} : {}\t\t{} : {}".format(max_length_item, max_length, max_times_item, max_times), "max",1)
-    infolist(sorted(match_word_dict.items(),key = lambda x:len(x[0]),reverse=True), "by_length",1)
-    infolist(sorted(match_word_dict.items(),key = lambda x:x[1],reverse=True), "by_times",1)
-    infolist(lengths, "lengths",10)
-    infolist(times, "times",10)
-    infolist([str(k) for k in weight_length], "weight_length:{}".format(str(len(weight_length))), 5)
-    infolist([str(k) for k in weight_times], "weight_times:{}".format(str(len(weight_times))), 5)
+    info("{} : {}\t{} : {}".format(max_length_item, max_length,
+                                   max_times_item, max_times), "top_value:\n{}\n".format(title))
+    infolist(sorted(match_phrase_dict.items(), key=lambda x: len(
+        x[0]), reverse=True), "by_length:{}".format(title), 1)
+    infolist(sorted(match_phrase_dict.items(), key=lambda x: x[
+             1], reverse=True), "by_times:{}".format(title), 1)
+    infolist(lengths, "lengths", 13)
+    infolist(times, "times", 13)
+    infolist([str(k) for k in weight_length],
+             "weight_length:{}".format(str(len(weight_length))), 5)
+    infolist([str(k) for k in weight_times],
+             "weight_times:{}".format(str(len(weight_times))), 5)
     # infolist(score_list, "score_list:{}".format(str(len(score_list))), 3)
     # infolist(the_items, "the_items:{}".format(str(len(the_items))), 3)
-    infodict(case_score_dict, "case_score_dict:{}".format(str(len(case_score_dict))), 2)
-    # info("{} : {}/{}".format(i, score, score1), "score")
+    infodict(case_score_dict, "case_score_dict:\n{}\n".format(title), 3)
     return score
 
-def compare_it(progress_dic,max_len):
-    assess_dict = dict(zip(progress_dic.keys(),[0 for i in range(len(progress_dic))]))
-    for i,j in progress_dic.items():
-        var_holder = ["{} -> {}".format(p[1],p[0]) for p in i]
-        info("[replace {}]:\n{}".format(', '.join(var_holder),j), "compare_it")
 
-        score = assess_it(j,max_len)
+def reviewer(progress_dic, max_len):
+    assess_dict = dict(
+        zip(progress_dic.keys(), [0 for i in range(len(progress_dic))]))
+    curr_idx = 1
+    for i, j in progress_dic.items():
+        var_holder = ["{} -> {}".format(p[1], p[0]) for p in i]
+        info("[replace {}]:\n{}".format(', '.join(var_holder), j),
+             "reviewer:({}/{})".format(curr_idx, len(progress_dic)))
+        score = assessor(i, j, max_len)
         assess_dict[i] = score
-    better = sorted(assess_dict, key=lambda x: x, reverse=False)[0]
-    infodict(assess_dict, "assess_dict:{}".format(str(len(assess_dict))), 1)
-    info("{} : {} is better\n-----\n{}".format(better,assess_dict[better],progress_dic[better]), "better")
-    # info("{}\n-----\n{}".format(progress_dic[better],), "tmp_progress:better")
-    for i in better:
+        curr_idx += 1
+    ranked_progress_list = sorted(
+        assess_dict, key=lambda x: assess_dict[x], reverse=True)
+    best = ranked_progress_list[0]
+    better = ranked_progress_list[1]
+    assess_dict_sorted_list = sorted(
+        assess_dict.items(), key=lambda x: x[1], reverse=True)
+    infolist(assess_dict_sorted_list, "assess_dict_sorted_list:".format(''), 1)
+    info("{} : {} is best\n-----\n{}".format(best,
+                                             assess_dict[best], progress_dic[best]), "best")
+    for i in best:
         couples.add((i[0], i[1]))
+    # if (assess_dict[best]-assess_dict[better])/assess_dict[best] > 0.1:
+    #     for i in best:
+    #         couples.add((i[0], i[1]))
+    # else:
+    #     x = 5 if len(progress_dic) > 5 else len(progress_dic) - 1
+    #     infodict(ranked_progress_list[:x], "ranked_progress_list:{}".format(str(len(ranked_progress_list))), 1)
 
-def brute_crack(msg,max_len=5):
+
+def brute_crack(msg, max_len=5):
     progress = msg
     progress = updater(progress, legal_dict)
-    progress = updater(progress, suspects_dict)
-    progress = updater(progress, legal_dict)
-    tmp_progress_dict_zcs = exhaust(list("zcs"), progress)
-    compare_it(tmp_progress_dict_zcs,max_len)
-    progress = updater(progress, legal_dict)
-    if remain_alpha:
-        tmp_progress_dict = exhaust(remain_alpha, progress)
-        compare_it(tmp_progress_dict,max_len)
-        progress = updater(progress, legal_dict)
     # progress = updater(progress, suspects_dict)
-    # if remain_alpha:
-    #     tmp_progress_dict = exhaust(remain_alpha, progress)
-    #     compare_it(tmp_progress_dict,max_len)
-    #     progress = updater(progress, legal_dict)
+    # progress = updater(progress, legal_dict)
+    # tmp_progress_dict_zcs = enumerator(list("zcs"), progress)
+    # reviewer(tmp_progress_dict_zcs,max_len)
+    # progress = updater(progress, legal_dict)
+    # if remain_alpha and len(remain_alpha) > 13:
     #     progress = updater(progress, suspects_dict)
+    #     progress = updater(progress, legal_dict)
+    # if remain_alpha and len(remain_alpha) < 11:
+    tmp_progress_dict = enumerator(remain_alpha, progress)
+    reviewer(tmp_progress_dict, max_len)
+    # progress = updater(progress, legal_dict)
+
     return progress
 
-# fname="留言2_op_已加密_转写"
-# fname="来自白犀的问候_op_已加密_转写"
-# fname="因为门德尔松_op_已加密_转写"
 # fname="随想_op_已加密_转写"
 fname = "留言1-1_op_已加密_转写"
+# fname = "三味书屋后面也有一个园_op_已加密_转写"
 with open("src/" + fname + ".txt", "r", encoding="utf-8") as fp:
     article = fp.read()
     article_without_space = article.replace(" ", "")
@@ -1114,6 +1065,7 @@ with open("src/" + fname + ".txt", "r", encoding="utf-8") as fp:
     total_words = len(article.split())
     occ_symbos = list(set(article_without_space))
     total_symbos = len(occ_symbos)
+    info(article, "article:source\nchar:{} word:{}".format(total_chars,total_words), 1)
     info("chars:{}, words:{}, symbos:{}".format(
         total_chars, total_words, total_symbos))
     infolist(occ_symbos, "occ_symbos", 14)
@@ -1145,23 +1097,29 @@ with open("src/" + fname + ".txt", "r", encoding="utf-8") as fp:
     # 存放其它字典运算结果的临时名单
     guess_dict = dict(zip(lower_case, [set() for i in range(26)]))
 
-progress, legal_pinyin_list = letter_pos_analyse(fname)
+progress, legal_pinyin_list = letter_pos_analyse(article)
 progress = letter_freq_analyse(progress)
 progress = spell_analyse(progress)
 progress = spell_analyse(progress)
 progress = updater(progress, legal_dict)
-progress = phrase_freq_analyse(progress,max_len=5)
-# progress = updater(progress, {k: suspects_dict[k] for k in suspects_dict.keys() if k in remain_alpha})
+
+# progress = phrase_freq_analyse(progress,max_len=5)
+
+progress = updater(progress, legal_dict)
+progress = updater(progress, {k: suspects_dict[k] for k in suspects_dict.keys() if k in remain_alpha})
+progress = updater(progress, legal_dict)
 progress = brute_crack(progress,max_len=5)
-# progress = updater(progress, legal_dict)
-# progress = updater(progress, suspects_dict)
-# progress="Au Ai Dhuo Ai lv Ie Kai Mi guang hua Ie Dhi Ping lan gao Ia Ie Qao Pia Dhu Qi hong Ie Dang Qhen Re Au Ai Dhuo Sing Khan Qai Dhu Re li Khang Rin Tei Uang Ie huang Teng Tu Qai Kai hua Dhang Ming Pie Ie Piao Vian Qi hu ran Kong Kao Pian Qhi Kuan Xiang Run Xiao li Mu le o Ri Dhang Qhi Dhi gen ni Sen Yai ge Zan Xiao gong Xi ni Sen Vong guo le Ii Dan guan Xian Qai ni Sen Xiao Qu Ri Ping Qheng Sing le Qi Pi Ie Dhi li Sing nian Iong Vian Piang Rou Ri Khang Ra Qhou Dhao nian er Vong Si Sa Ia Piang Dai Zo Qhen Kheng Ii Xi Zang ni Sen Pie Dhi Re neng gou Kan Pia"
+# # progress = updater(progress, legal_dict)
 
 
-infodict({k: possibly_dict[k] for k in possibly_dict.keys() if k in remain_alpha}, "possibly_dict:now", 1, 14)
-infodict({k: probably_dict[k] for k in probably_dict.keys() if k in remain_alpha}, "probably_dict:now", 1, 14)
-infodict({k: presumably_dict[k] for k in presumably_dict.keys() if k in remain_alpha}, "presumably_dict:now", 1, 14)
-infodict({k: guess_dict[k] for k in guess_dict.keys() if k in remain_alpha}, "guess_dict:now", 1, 14)
+infodict({k: possibly_dict[k] for k in possibly_dict.keys(
+) if k in remain_alpha}, "possibly_dict:now", 1, 14)
+infodict({k: probably_dict[k] for k in probably_dict.keys(
+) if k in remain_alpha}, "probably_dict:now", 1, 14)
+infodict({k: presumably_dict[k] for k in presumably_dict.keys(
+) if k in remain_alpha}, "presumably_dict:now", 1, 14)
+infodict({k: guess_dict[k] for k in guess_dict.keys()
+          if k in remain_alpha}, "guess_dict:now", 1, 14)
 infodict({k: legal_dict[k] for k in legal_dict.keys()
           if k in remain_alpha}, "legal_dict:now", 1, 14)
 infodict({k: suspects_dict[k] for k in suspects_dict.keys(
