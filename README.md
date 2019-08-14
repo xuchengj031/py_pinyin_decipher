@@ -8,9 +8,9 @@
 
 #### 字母频率分析+词汇分析结果
 
-![]('README/test_suixiang_phrase.png')
+![](README/test_suixiang_phrase.png)
 
 #### 暴力破解结果
 
-![]('README/best.png')
+![](README/best.png)
 
