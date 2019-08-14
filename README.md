@@ -6,11 +6,11 @@
 
 ## 效果
 
-#### 字母频率分析结果
+#### 字母频率分析+词汇分析结果
 
-![]('http://www.xuchengjing.cn/python非暴力破译古典密码/images/test_suixiang_phrase.png')
+![]('README/test_suixiang_phrase.png')
 
 #### 暴力破解结果
 
-![]('http://www.xuchengjing.cn/python非暴力破译古典密码/images/best.png')
+![]('README/best.png')
 
